@@ -207,6 +207,11 @@ body {
 	margin: 25px 5px 5px 5px;
 }
 
+#github-stars {
+	border: none;
+	overflow: hidden;
+}
+
 .rotate180 {
 	transform: rotate(180deg);
 	-moz-transform: rotate(180deg);
