@@ -183,15 +183,15 @@ var PeerChessGame = Class.create({
 
 	isCastlingMove: function(src, dst) {
 		var row = (this.field[src.posX][src.posY].getColor() == 'white'? 0:7);
-		if (!(src.posY == dst.posY && src.posY == row
+		if ((src.posY == dst.posY && src.posY == row
 			&& src.posX == 4
 			&& dst.posX == 6
 			&& this.field[5][row] == undefined
 			&& this.field[6][row] == undefined
 			&& this.field[7][row] instanceof RookFigure
 			&& this.field[7][row].getColor() == this.field[src.posX][src.posY].getColor()
-			)) return false;
-		if (!(src.posY == dst.posY && src.posY == row
+			&& !this.fieldIsCoveredByColor(this.getEnemyColor(), {posX: 5, posY: row}, this.field)
+			) || (src.posY == dst.posY && src.posY == row
 			&& src.posX == 4
 			&& dst.posX == 2
 			&& this.field[3][row] == undefined
@@ -199,22 +199,27 @@ var PeerChessGame = Class.create({
 			&& this.field[1][row] == undefined
 			&& this.field[0][row] instanceof RookFigure
 			&& this.field[0][row].getColor() == this.field[src.posX][src.posY].getColor()
-			)) return false;
-		// currently in check?
-		if (this.playerIsInCheck(this.getMyColor(), this.field)) return false;
-		// history
-		var historyLength = this.history.length;
-		var kingPosStr = posIndex2String(src);
-		var rookPosStr = posIndex2String({posX: (dst.posX == 2 ? 0 : 7), posY: row});
-		for (var i = (this.getMyColor()=='white'?0:1); i < historyLength; i = i+2) {
-			if (this.history[i] == 'O-O-O') return false;
-			if (this.history[i] == 'O-O') return false;
-			if (this.history[i].substr(0, 2) == kingPosStr) return false;
-			if (this.history[i].substr(0, 2) == rookPosStr) return false;
-			if (this.history[i].substr(3, 2) == rookPosStr) return false;
+			&& !this.fieldIsCoveredByColor(this.getEnemyColor(), {posX: 3, posY: row}, this.field)
+			)) {
+			// currently in check?
+			if (this.playerIsInCheck(this.getMyColor(), this.field)) return false;
+			// history
+			var historyLength = this.history.length;
+			var kingPosStr = posIndex2String(src);
+			var rookPosStr = posIndex2String({posX: (dst.posX == 2 ? 0 : 7), posY: row});
+			for (var i = (this.getMyColor()=='white'?0:1); i < historyLength; i = i+2) {
+				if (this.history[i] == 'O-O-O') return false;
+				if (this.history[i] == 'O-O') return false;
+				if (this.history[i].substr(0, 2) == kingPosStr) return false;
+				if (this.history[i].substr(0, 2) == rookPosStr) return false;
+				if (this.history[i].substr(3, 2) == rookPosStr) return false;
+			}
+			// all ok, return true
+			return true;
 		}
-		// all ok, return true
-		return true;
+		else {
+			return false;
+		}
 	},
 
 	move: function(src, dst) {
