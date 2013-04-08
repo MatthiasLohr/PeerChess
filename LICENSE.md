@@ -22,3 +22,9 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (MIT License)
+
+## chess figure images ##
+
+The chess figures (file figures/beholder.png) are taken from
+http://sf.net/projects/webchess/, licensed with GPLv3:
+  <http://www.gnu.org/licenses/>
