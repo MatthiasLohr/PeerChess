@@ -1,28 +1,50 @@
+<!DOCTYPE html>
 <html>
 	<head>
 		<title>PeerChess</title>
-    	<link rel="stylesheet" type="text/css" href="peerchess.css"></link>
-			<link rel="stylesheet" type="text/css" href="figures/beholder.css"></link>
+			<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    	<link rel="stylesheet" type="text/css" href="peerchess.css" />
+			<link rel="stylesheet" type="text/css" href="figures/beholder.css" />
 	</head>
 	<body>
 		<div id="connection-dialog">
 			<p>
 				<label for="remote-id">Your opponent's ID: </label><input type="text" name="remote-id" id="remote-id" />
-				My ID: <span id="local-id"><em>loading...</em></span>
+				Your ID: <span id="local-id"><em>loading...</em></span>
 			</p>
 		</div>
 		<div id="game" style="display: none;">
+			<div id="game-info">
+				<div>current turn:</div>
+				<div id="turn-info" class="white">white</div>
+				<div>history:</div>
+				<div id="history-box">
+					<div id="history-table-container">
+						<table id="history-table"></table>
+					</div>
+				</div>
+			</div>
 			<div id="gameboard" style="width: 500px; height: 500px;">
 				<div id="fields"></div>
+			</div>
+			<div id="lost-figures">
+				<div>lost figures (white):</div>
+				<div id="lost-figures-white" class="lost-figures-frame" style="height: 50px;"></div>
+				<div>lost figures (black):</div>
+				<div id="lost-figures-black" class="lost-figures-frame" style="height: 50px;"></div>
 			</div>
 			<div id="chat">
 				<div id="messages">
 
 				</div>
 				<div>
-					<input type="text" placeholder="write message..." id="chat-write-message"></input>
+					<input type="text" placeholder="write message..." id="chat-write-message" />
 				</div>
 			</div>
+		</div>
+		<div id="footer">
+			<iframe id="github-stars" src="http://ghbtns.com/github-btn.html?user=MatthiasLohr&amp;repo=PeerChess&amp;type=watch&amp;count=true"
+				width="110" height="20"></iframe>
 		</div>
 		<script src="http://ajax.googleapis.com/ajax/libs/prototype/1.7.1.0/prototype.js"></script>
 		<script src="http://ajax.googleapis.com/ajax/libs/scriptaculous/1.9.0/scriptaculous.js"></script>

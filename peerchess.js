@@ -48,8 +48,8 @@ var PeerChessGame = Class.create({
 					that.peer.disconnect();
 					that.gameStatus = GAME_STATUS_RUNNING;
 					that.connection = connection;
-					that.executeCallback('onConnected');
 					that.initGameBoard('black');
+					that.executeCallback('onConnected');
 					that.executeCallback('onNotice', {message: 'You challenged the other player, so you\'re playing with <strong>black</strong>!'});
 					that.connection.on('data', function(data) {
 						that.parseIncomingData(data);
@@ -71,8 +71,8 @@ var PeerChessGame = Class.create({
 				that.peer.disconnect();
 				that.gameStatus = GAME_STATUS_RUNNING;
 				that.connection = connection;
-				that.executeCallback('onConnected');
 				that.initGameBoard('white');
+				that.executeCallback('onConnected');
 				that.executeCallback('onNotice', {message: 'You has been challenged, so you\'re playing with <strong>white</strong>!'});
 				that.executeCallback('onNotice', {message: 'Come on, make your first move!'});
 				that.connection.on('data', function(data) {
@@ -90,11 +90,11 @@ var PeerChessGame = Class.create({
 		return this.callbacks[callbackName].call(this, options);
 	},
 
-	fieldIsCoveredByColor: function(color, pos) {
+	fieldIsCoveredByColor: function(color, pos, field) {
 		for (var x = 0; x <= 7; x++) for (var y = 0; y <= 7; y++) {
-			if (this.field[x][y] === undefined) continue;
-			if (this.field[x][y].getColor() != color) continue;
-			if (this.field[x][y].validateMove({posX: x, posY: y}, pos, this.field)) return true;
+			if (field[x][y] === undefined) continue;
+			if (field[x][y].getColor() != color) continue;
+			if (field[x][y].validateMove({posX: x, posY: y}, pos, field)) return true;
 		}
 		return false;
 	},
@@ -113,6 +113,17 @@ var PeerChessGame = Class.create({
 		return this.field[x][y];
 	},
 
+	getFieldCopy: function() {
+		var copy = new Array(8);
+		for (var x = 0; x <= 7; x++) {
+			copy[x] = new Array(8);
+			for (var y = 0; y <= 7; y++) {
+				copy[x][y] = this.field[x][y];
+			}
+		}
+		return copy;
+	},
+
 	getGameStatus: function() {
 		return this.gameStatus;
 	},
@@ -127,7 +138,7 @@ var PeerChessGame = Class.create({
 
 	historyAppend: function(moveCode) {
 		this.history.push(moveCode);
-		this.executeCallback('onHistoryAppend', {code: moveCode});
+		this.executeCallback('onHistoryAppend', {code: moveCode, history: this.history});
 	},
 
 	historyGetLastMove: function() {
@@ -136,6 +147,7 @@ var PeerChessGame = Class.create({
 
 	initGameBoard: function(myColor) {
 		this.myColor = myColor;
+		this.executeCallback('onTurnChange', {onTurn: 'white'});
 		this.field = new Array(8);
 		for (i = 0; i <= 7; i++) this.field[i] = new Array(8);
 		this.figureAdd('white', RookFigure,   {posX: 0, posY: 0});
@@ -175,6 +187,47 @@ var PeerChessGame = Class.create({
 		return false;
 	},
 
+	isCastlingMove: function(src, dst) {
+		var row = (this.field[src.posX][src.posY].getColor() == 'white'? 0:7);
+		if ((src.posY == dst.posY && src.posY == row
+			&& src.posX == 4
+			&& dst.posX == 6
+			&& this.field[5][row] == undefined
+			&& this.field[6][row] == undefined
+			&& this.field[7][row] instanceof RookFigure
+			&& this.field[7][row].getColor() == this.field[src.posX][src.posY].getColor()
+			&& !this.fieldIsCoveredByColor(this.getEnemyColor(), {posX: 5, posY: row}, this.field)
+			) || (src.posY == dst.posY && src.posY == row
+			&& src.posX == 4
+			&& dst.posX == 2
+			&& this.field[3][row] == undefined
+			&& this.field[2][row] == undefined
+			&& this.field[1][row] == undefined
+			&& this.field[0][row] instanceof RookFigure
+			&& this.field[0][row].getColor() == this.field[src.posX][src.posY].getColor()
+			&& !this.fieldIsCoveredByColor(this.getEnemyColor(), {posX: 3, posY: row}, this.field)
+			)) {
+			// currently in check?
+			if (this.playerIsInCheck(this.getMyColor(), this.field)) return false;
+			// history
+			var historyLength = this.history.length;
+			var kingPosStr = posIndex2String(src);
+			var rookPosStr = posIndex2String({posX: (dst.posX == 2 ? 0 : 7), posY: row});
+			for (var i = (this.getMyColor()=='white'?0:1); i < historyLength; i = i+2) {
+				if (this.history[i] == 'O-O-O') return false;
+				if (this.history[i] == 'O-O') return false;
+				if (this.history[i].substr(0, 2) == kingPosStr) return false;
+				if (this.history[i].substr(0, 2) == rookPosStr) return false;
+				if (this.history[i].substr(3, 2) == rookPosStr) return false;
+			}
+			// all ok, return true
+			return true;
+		}
+		else {
+			return false;
+		}
+	},
+
 	move: function(src, dst) {
 		if (src.posX == dst.posX && src.posY == dst.posY) return false;
 		if (src.posX < 0 || src.posX > 7 || src.posY < 0 || src.posY > 7 || dst.posX < 0 || dst.posX > 7 || dst.posY < 0 || dst.posY > 7) return false;
@@ -182,7 +235,13 @@ var PeerChessGame = Class.create({
 		if (figure === undefined) return false;
 		var dstFigure = this.getFigureAt(dst.posX, dst.posY);
 		if (dstFigure !== undefined && dstFigure.getColor() == figure.getColor()) return false;
+		var fieldTestCopy = this.getFieldCopy();
 		if (this.isEnPassantMove(src, dst)) {
+			figure.executeMove(src, dst, fieldTestCopy);
+			if (this.playerIsInCheck(this.getMyColor(), fieldTestCopy)) {
+				this.executeCallback('onNotice', {message: 'You can\'t move into check!'});
+				return false;
+			}
 			this.switchTurn();
 			figure.executeMove(src, dst, this.field);
 			var code = posIndex2String(src)+'x'+posIndex2String(dst);
@@ -190,29 +249,51 @@ var PeerChessGame = Class.create({
 			this.executeCallback('onFigureRemove', {position: {posX: dst.posX, posY: src.posY }});
 			this.executeCallback('onFigureMove', {src: src, dst: dst});
 			this.executeCallback('onNotice', {message: 'You moved your <strong>pawn</strong> from <strong>'+posIndex2String(src)+'</strong> to <strong>'+posIndex2String(dst)+'</strong> and killed your enemy en passant.'});
-			if (this.playerIsInChess(this.getEnemyColor())) code += '+';
+			if (this.playerIsInCheck(this.getEnemyColor(), this.field)) code += '+';
+			this.sendMove(code);
+			this.historyAppend(code);
+		}
+		else if (this.isCastlingMove(src, dst)) {
+			// determine castling direction
+			var row = (this.getMyColor() == 'white'? 0:7);
+			if (dst.posX == 2) { // O-O-O
+				var code = 'O-O-O';
+				var rookSrcX = 0;
+				var rookDstX = 3;
+			}
+			else { // O-O
+				var code = 'O-O';
+				var rookSrcX = 7;
+				var rookDstX = 5;
+			}
+			figure.executeMove(src, dst, fieldTestCopy);
+			fieldTestCopy[rookSrcX][row].executeMove({posX: rookSrcX, posY: row}, {posX: rookDstX, posY: row}, fieldTestCopy);
+			if (this.playerIsInCheck(this.getMyColor(), fieldTestCopy)) {
+				this.executeCallback('onNotice', {message: 'You can\'t move into check!'});
+				return false;
+			}
+			this.switchTurn();
+			figure.executeMove(src, dst, this.field);
+			this.field[rookSrcX][row].executeMove({posX: rookSrcX, posY: row}, {posX: rookDstX, posY: row}, this.field);
+			this.executeCallback('onFigureMove', {src: src, dst: dst}); // move king
+			this.executeCallback('onFigureMove', {src: {posX: rookSrcX, posY: row}, dst: {posX: rookDstX, posY: row}}); // move rook
+			this.executeCallback('onNotice', {message: 'You\'re castling!'});
+			if (this.playerIsInCheck(this.getEnemyColor(), this.field)) code += '+';
 			this.sendMove(code);
 			this.historyAppend(code);
 		}
 		else if (figure.validateMove(src, dst, this.field)) {
+			figure.executeMove(src, dst, fieldTestCopy);
+			if (this.playerIsInCheck(this.getMyColor(), fieldTestCopy)) {
+				this.executeCallback('onNotice', {message: 'You can\'t move into check!'});
+				return false;
+			}
 			this.switchTurn();
 			var code = figure.executeMove(src, dst, this.field);
-			if (code == 'O-O-O') {
-				this.executeCallback('onFigureMove', {src: src, dst: dst}); // move king
-				this.executeCallback('onFigureMove', {src: {posX: 0, posY: src.posY}, dst: {posX: 3, posY: src.posY}}); // move rook
-				this.executeCallback('onNotice', {message: 'You\'re castling!'});
-			}
-			else if (code == 'O-O') {
-				this.executeCallback('onFigureMove', {src: src, dst: dst}); // move king
-				this.executeCallback('onFigureMove', {src: {posX: 7, posY: src.posY}, dst: {posX: 5, posY: src.posY}}); // move rook
-				this.executeCallback('onNotice', {message: 'You\'re castling!'});
-			}
-			else {
-				if (dstFigure !== undefined) this.executeCallback('onFigureRemove', {position: dst});
-				this.executeCallback('onFigureMove', {src: src, dst: dst});
-				this.executeCallback('onNotice', {message: 'You moved your <strong>'+figure.getType()+'</strong> from <strong>'+posIndex2String(src)+'</strong> to <strong>'+posIndex2String(dst)+'</strong>.'});
-			}
-			if (this.playerIsInChess(this.getEnemyColor())) code += '+';
+			if (dstFigure !== undefined) this.executeCallback('onFigureRemove', {position: dst});
+			this.executeCallback('onFigureMove', {src: src, dst: dst});
+			this.executeCallback('onNotice', {message: 'You moved your <strong>'+figure.getType()+'</strong> from <strong>'+posIndex2String(src)+'</strong> to <strong>'+posIndex2String(dst)+'</strong>.'});
+			if (this.playerIsInCheck(this.getEnemyColor(), this.field)) code += '+';
 			this.sendMove(code);
 			this.historyAppend(code);
 		}
@@ -238,16 +319,20 @@ var PeerChessGame = Class.create({
 				if (dataContent == 'O-O-O' || dataContent == 'O-O-O+') {
 					// TODO check for remote foobar
 					var row = (this.getEnemyColor() == 'white'?0:7);
+					this.field[4][row].executeMove({posX: 4, posY: row}, {posX: 2, posY: row}, this.field);
 					this.executeCallback('onFigureMove', {src: {posX: 4, posY: row}, dst: {posX: 2, posY: row}});
 					this.executeCallback('onFigureMove', {src: {posX: 0, posY: row}, dst: {posX: 3, posY: row}});
 					this.executeCallback('onNotice', {message: 'Your opponent is castling!'});
+					this.switchTurn();
 				}
 				else if (dataContent == 'O-O' || dataContent == 'O-O+') {
 					// TODO check for remote foobar
 					var row = (this.getEnemyColor() == 'white'?0:7);
+					this.field[4][row].executeMove({posX: 4, posY: row}, {posX: 6, posY: row}, this.field);
 					this.executeCallback('onFigureMove', {src: {posX: 4, posY: row}, dst: {posX: 6, posY: row}});
 					this.executeCallback('onFigureMove', {src: {posX: 7, posY: row}, dst: {posX: 5, posY: row}});
 					this.executeCallback('onNotice', {message: 'Your opponent is castling!'});
+					this.switchTurn();
 				}
 				else {
 					var src = posString2Index(dataContent.substr(0,2));
@@ -286,14 +371,14 @@ var PeerChessGame = Class.create({
 		}
 	},
 
-	playerIsInChess: function(color) {
+	playerIsInCheck: function(color, field) {
 		var kingPos = null;
 		// find the king position
-		parentLoop: for (var x = 0; x <= 7; x++) for (var y = 0; y <= 7; y++) if (this.field[x][y] instanceof KingFigure && this.field[x][y].getColor() == color) {
+		parentLoop: for (var x = 0; x <= 7; x++) for (var y = 0; y <= 7; y++) if (field[x][y] instanceof KingFigure && field[x][y].getColor() == color) {
 			kingPos = {posX: x, posY: y};
 			break parentLoop;
 		}
-		return this.fieldIsCoveredByColor((color == 'white'? 'black':'white'), kingPos);
+		return this.fieldIsCoveredByColor((color == 'white'? 'black':'white'), kingPos, field);
 	},
 
 	sendChatMessage: function(text) {
@@ -315,6 +400,7 @@ var PeerChessGame = Class.create({
 		else {
 			this.turn = 'white';
 		}
+		this.executeCallback('onTurnChange', {onTurn: this.turn})
 	}
 });
 
@@ -349,50 +435,9 @@ var KingFigure = Class.create(PeerChessFigure, {
 		$super(color, 'king');
 	},
 
-	executeMove: function($super, src, dst, field) {
-		if (this.isValidCastlingMove(src, dst, field)) {
-			if (dst.posX == 2) { // O-O-O
-				$super(src, dst, field); // move king
-				$super({posX: 0, posY: src.posY}, {posX: 3, posY: src.posY}, field); // move rook
-				return 'O-O-O';
-			}
-			else { // O-O
-				$super(src, dst, field); // move king
-				$super({posX: 7, posY: src.posY}, {posX: 5, posY: src.posY}, field); // move rook
-				return 'O-O';
-			}
-		}
-		else {
-			return $super(src, dst, field);
-		}
-	},
-
-	isValidCastlingMove: function(src, dst, field) {
-		var row = (this.color == 'white'? 0:7);
-		if (src.posY == dst.posY && src.posY == row
-			&& src.posX == 4
-			&& dst.posX == 6
-			&& field[5][row] == undefined
-			&& field[6][row] == undefined
-			&& field[7][row] instanceof RookFigure
-			&& field[7][row].getColor() == this.color
-		) return true;
-		if (src.posY == dst.posY && src.posY == row
-			&& src.posX == 4
-			&& dst.posX == 2
-			&& field[3][row] == undefined
-			&& field[2][row] == undefined
-			&& field[1][row] == undefined
-			&& field[0][row] instanceof RookFigure
-			&& field[0][row].getColor() == this.color
-		) return true;
-		return false;
-	},
-
 	validateMove: function(src, dst, field) {
 		// default move
 		if (Math.abs(src.posX-dst.posX) <= 1 && Math.abs(src.posY-dst.posY) <= 1) return true;
-		if (this.isValidCastlingMove(src, dst, field)) return true;
 		return false;
 	}
 });
@@ -545,6 +590,13 @@ document.observe("dom:loaded", function() {
 		onConnected: function() {
 			$('connection-dialog').hide();
 			$('game').show();
+			if (this.getMyColor() == 'black') {
+				$('gameboard').addClassName('rotate180');
+				var blackFigures = $$('#gameboard .figure');
+				for (var i = 0; i < blackFigures.length; i++) {
+					blackFigures[i].addClassName('rotate180');
+				}
+			}
 		},
 		onChatMessage: function(data) {
 			var template = new Element('p',{
@@ -572,7 +624,7 @@ document.observe("dom:loaded", function() {
 				'data-type': data.figure.getType(),
 				'data-position-x': data.position.posX,
 				'data-position-y': data.position.posY,
-				'style': 'position: absolute; display: none; z-index: 0;',
+				'style': 'display: none; z-index: 0;',
 				title: data.figure.getColor()+' '+data.figure.getType()
 			});
 			// show figure
@@ -594,12 +646,54 @@ document.observe("dom:loaded", function() {
 		},
 		onFigureRemove: function(data) {
 			var figure = $$('#fields .figure[data-position-x="'+data.position.posX+'"][data-position-y="'+data.position.posY+'"]').first();
-			Effect.Fade(figure, {
+			var lostFigure = figure.clone();
+			lostFigure.removeClassName('rotate180');
+			lostFigure.setStyle({top: null, left: null});
+			lostFigure.hide();
+			new Effect.Fade(figure, {
 				afterFinish: function() { figure.remove(); }
 			});
+			if (lostFigure.readAttribute('data-color') == 'white') {
+				$('lost-figures-white').appendChild(lostFigure);
+			}
+			else {
+				$('lost-figures-black').appendChild(lostFigure);
+			}
+			new Effect.Appear(lostFigure);
 		},
 		onHistoryAppend: function(data) {
-			// TODO implement. for example create history window
+			if (data.history.length % 2 == 1) {
+				var rowElement = new Element('tr');
+				var indexElement = new Element('td');
+				indexElement.update(Math.ceil(data.history.length / 2)+'.');
+				rowElement.appendChild(indexElement);
+				var firstColElement = new Element('td');
+				firstColElement.update(data.code);
+				rowElement.appendChild(firstColElement);
+				var secondColElement = new Element('td');
+				rowElement.appendChild(secondColElement);
+				$('history-table').appendChild(rowElement);
+				new Effect.ScrollToBottom($('history-table-container'));
+			}
+			else {
+				$$('#history-table tr td').last().update(data.code);
+			}
+		},
+		onTurnChange: function(data) {
+			if (data.onTurn == 'white') {
+				$('turn-info').removeClassName('black');
+				$('turn-info').addClassName('white');
+			}
+			else {
+				$('turn-info').removeClassName('white');
+				$('turn-info').addClassName('black');
+			}
+			if (data.onTurn == this.getMyColor()) {
+				$('turn-info').update(data.onTurn+' - that\'s your color!');
+			}
+			else {
+				$('turn-info').update(data.onTurn);
+			}
 		}
 	});
 
@@ -649,8 +743,15 @@ document.observe("dom:loaded", function() {
 		// calculate relative click position
 		var relativeX = event.pageX - this.fullPositionedOffset()[0];
 		var relativeY = event.pageY - this.fullPositionedOffset()[1];
+		// calculate fields
 		var fieldX = Math.floor(8*relativeX/this.getWidth());
 		var fieldY = 7-Math.floor(8*relativeY/this.getHeight());
+		// if board is inversed, inverse click position
+		if (game.getMyColor() == 'black') {
+			fieldX = 7-fieldX;
+			fieldY = 7-fieldY;
+		}
+		// select figure
 		var figure = game.getFigureAt(fieldX, fieldY);
 		// select? move?
 		if (figure !== undefined && figure.getColor() == game.getMyColor()) {

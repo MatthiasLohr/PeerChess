@@ -1,22 +1,33 @@
 
-html, body {
+html, body, td {
 	font-family: Arial, sans-serif;
 	color: #333;
 	font-size: 12px;
 }
 
-#game {
+body {
+	padding: 10px;
+}
 
+#connection-dialog {
+	margin: 5px;
+}
+
+#game {
+	margin: 5px;
 }
 
 #game .figure {
+	background-size: 600% 200%;
+}
+
+#game #fields .figure {
 	width: 12.5%;
 	height: 12.5%;
-	background-size: 600% 200%;
 	position: absolute;
 }
 
-#game .figure.selected {
+#game #fields .figure.selected {
 	background-color: yellow;
 }
 
@@ -68,23 +79,66 @@ html, body {
 	background-position: 100% 100%;
 }
 
-#game .figure[data-position-x="0"] { left:  0.0%; }
-#game .figure[data-position-x="1"] { left: 12.5%; }
-#game .figure[data-position-x="2"] { left: 25.0%; }
-#game .figure[data-position-x="3"] { left: 37.5%; }
-#game .figure[data-position-x="4"] { left: 50.0%; }
-#game .figure[data-position-x="5"] { left: 62.5%; }
-#game .figure[data-position-x="6"] { left: 75.0%; }
-#game .figure[data-position-x="7"] { left: 87.5%; }
+#game #fields .figure[data-position-x="0"] { left:  0.0%; }
+#game #fields .figure[data-position-x="1"] { left: 12.5%; }
+#game #fields .figure[data-position-x="2"] { left: 25.0%; }
+#game #fields .figure[data-position-x="3"] { left: 37.5%; }
+#game #fields .figure[data-position-x="4"] { left: 50.0%; }
+#game #fields .figure[data-position-x="5"] { left: 62.5%; }
+#game #fields .figure[data-position-x="6"] { left: 75.0%; }
+#game #fields .figure[data-position-x="7"] { left: 87.5%; }
 
-#game .figure[data-position-y="0"] { top: 87.5%;  }
-#game .figure[data-position-y="1"] { top: 75.0%;  }
-#game .figure[data-position-y="2"] { top: 62.5%;  }
-#game .figure[data-position-y="3"] { top: 50.0%;  }
-#game .figure[data-position-y="4"] { top: 37.5%;  }
-#game .figure[data-position-y="5"] { top: 25.0%;  }
-#game .figure[data-position-y="6"] { top: 12.5%;  }
-#game .figure[data-position-y="7"] { top:  0.0%;  }
+#game #fields .figure[data-position-y="0"] { top: 87.5%;  }
+#game #fields .figure[data-position-y="1"] { top: 75.0%;  }
+#game #fields .figure[data-position-y="2"] { top: 62.5%;  }
+#game #fields .figure[data-position-y="3"] { top: 50.0%;  }
+#game #fields .figure[data-position-y="4"] { top: 37.5%;  }
+#game #fields .figure[data-position-y="5"] { top: 25.0%;  }
+#game #fields .figure[data-position-y="6"] { top: 12.5%;  }
+#game #fields .figure[data-position-y="7"] { top:  0.0%;  }
+
+#game-info {
+	float: right;
+	width: 200px;
+}
+
+#turn-info {
+	border: 1px solid black;
+	padding: 10px;
+	font-weight: bold;
+	text-align: center;
+}
+
+#turn-info.white {
+	color: black;
+	background-color: white;
+}
+
+#turn-info.black {
+	color: white;
+	background-color: black;
+}
+
+#history-box {
+	border: 1px solid black;
+	height: 400px;
+}
+
+#history-table-container {
+	overflow-y: scroll;
+	height: 100%;
+}
+
+#history-table {
+	border-collapse: collapse;
+	border: 1px solid black;
+	width: 160px;
+	margin: 10px;
+}
+
+#history-table tr td {
+	border: 1px solid black;
+}
 
 #gameboard {
 	background-image: url('board.png');
@@ -99,8 +153,27 @@ html, body {
 	left: 10%;
 }
 
+#lost-figures {
+	margin: 5px;
+}
+
+.lost-figures-frame {
+	border: 1px solid black;
+	position: relative;
+}
+
+#lost-figures .lost-figures-frame .figure {
+	top: 0;
+	left: 0;
+	position: relative;
+	display: inline-block;
+	height: 50px;
+	width: 50px;
+}
+
 #chat {
 	border: 1px solid #333;
+	margin: 5px;
 }
 
 #chat #messages {
@@ -127,4 +200,22 @@ html, body {
 
 #chat #chat-write-message {
 	width: 100%;
+}
+
+#footer {
+	text-align: center;
+	margin: 25px 5px 5px 5px;
+}
+
+#github-stars {
+	border: none;
+	overflow: hidden;
+}
+
+.rotate180 {
+	transform: rotate(180deg);
+	-moz-transform: rotate(180deg);
+	-webkit-transform: rotate(180deg);
+	-o-transform: rotate(180deg);
+	-ms-transform:rotate(180deg);
 }
