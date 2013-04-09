@@ -181,6 +181,47 @@ var PeerChessGame = Class.create({
 		return false;
 	},
 
+	isCastlingMove: function(src, dst) {
+		var row = (this.field[src.posX][src.posY].getColor() == 'white'? 0:7);
+		if ((src.posY == dst.posY && src.posY == row
+			&& src.posX == 4
+			&& dst.posX == 6
+			&& this.field[5][row] == undefined
+			&& this.field[6][row] == undefined
+			&& this.field[7][row] instanceof RookFigure
+			&& this.field[7][row].getColor() == this.field[src.posX][src.posY].getColor()
+			&& !this.fieldIsCoveredByColor(this.getEnemyColor(), {posX: 5, posY: row}, this.field)
+			) || (src.posY == dst.posY && src.posY == row
+			&& src.posX == 4
+			&& dst.posX == 2
+			&& this.field[3][row] == undefined
+			&& this.field[2][row] == undefined
+			&& this.field[1][row] == undefined
+			&& this.field[0][row] instanceof RookFigure
+			&& this.field[0][row].getColor() == this.field[src.posX][src.posY].getColor()
+			&& !this.fieldIsCoveredByColor(this.getEnemyColor(), {posX: 3, posY: row}, this.field)
+			)) {
+			// currently in check?
+			if (this.playerIsInCheck(this.getMyColor(), this.field)) return false;
+			// history
+			var historyLength = this.history.length;
+			var kingPosStr = posIndex2String(src);
+			var rookPosStr = posIndex2String({posX: (dst.posX == 2 ? 0 : 7), posY: row});
+			for (var i = (this.getMyColor()=='white'?0:1); i < historyLength; i = i+2) {
+				if (this.history[i] == 'O-O-O') return false;
+				if (this.history[i] == 'O-O') return false;
+				if (this.history[i].substr(0, 2) == kingPosStr) return false;
+				if (this.history[i].substr(0, 2) == rookPosStr) return false;
+				if (this.history[i].substr(3, 2) == rookPosStr) return false;
+			}
+			// all ok, return true
+			return true;
+		}
+		else {
+			return false;
+		}
+	},
+
 	move: function(src, dst) {
 		if (src.posX == dst.posX && src.posY == dst.posY) return false;
 		if (src.posX < 0 || src.posX > 7 || src.posY < 0 || src.posY > 7 || dst.posX < 0 || dst.posX > 7 || dst.posY < 0 || dst.posY > 7) return false;
@@ -206,6 +247,35 @@ var PeerChessGame = Class.create({
 			this.sendMove(code);
 			this.historyAppend(code);
 		}
+		else if (this.isCastlingMove(src, dst)) {
+			// determine castling direction
+			var row = (this.getMyColor() == 'white'? 0:7);
+			if (dst.posX == 2) { // O-O-O
+				var code = 'O-O-O';
+				var rookSrcX = 0;
+				var rookDstX = 3;
+			}
+			else { // O-O
+				var code = 'O-O';
+				var rookSrcX = 7;
+				var rookDstX = 5;
+			}
+			figure.executeMove(src, dst, fieldTestCopy);
+			fieldTestCopy[rookSrcX][row].executeMove({posX: rookSrcX, posY: row}, {posX: rookDstX, posY: row}, fieldTestCopy);
+			if (this.playerIsInCheck(this.getMyColor(), fieldTestCopy)) {
+				this.executeCallback('onNotice', {message: 'You can\'t move into check!'});
+				return false;
+			}
+			this.switchTurn();
+			figure.executeMove(src, dst, this.field);
+			this.field[rookSrcX][row].executeMove({posX: rookSrcX, posY: row}, {posX: rookDstX, posY: row}, this.field);
+			this.executeCallback('onFigureMove', {src: src, dst: dst}); // move king
+			this.executeCallback('onFigureMove', {src: {posX: rookSrcX, posY: row}, dst: {posX: rookDstX, posY: row}}); // move rook
+			this.executeCallback('onNotice', {message: 'You\'re castling!'});
+			if (this.playerIsInCheck(this.getEnemyColor(), this.field)) code += '+';
+			this.sendMove(code);
+			this.historyAppend(code);
+		}
 		else if (figure.validateMove(src, dst, this.field)) {
 			figure.executeMove(src, dst, fieldTestCopy);
 			if (this.playerIsInCheck(this.getMyColor(), fieldTestCopy)) {
@@ -214,21 +284,9 @@ var PeerChessGame = Class.create({
 			}
 			this.switchTurn();
 			var code = figure.executeMove(src, dst, this.field);
-			if (code == 'O-O-O') {
-				this.executeCallback('onFigureMove', {src: src, dst: dst}); // move king
-				this.executeCallback('onFigureMove', {src: {posX: 0, posY: src.posY}, dst: {posX: 3, posY: src.posY}}); // move rook
-				this.executeCallback('onNotice', {message: 'You\'re castling!'});
-			}
-			else if (code == 'O-O') {
-				this.executeCallback('onFigureMove', {src: src, dst: dst}); // move king
-				this.executeCallback('onFigureMove', {src: {posX: 7, posY: src.posY}, dst: {posX: 5, posY: src.posY}}); // move rook
-				this.executeCallback('onNotice', {message: 'You\'re castling!'});
-			}
-			else {
-				if (dstFigure !== undefined) this.executeCallback('onFigureRemove', {position: dst});
-				this.executeCallback('onFigureMove', {src: src, dst: dst});
-				this.executeCallback('onNotice', {message: 'You moved your <strong>'+figure.getType()+'</strong> from <strong>'+posIndex2String(src)+'</strong> to <strong>'+posIndex2String(dst)+'</strong>.'});
-			}
+			if (dstFigure !== undefined) this.executeCallback('onFigureRemove', {position: dst});
+			this.executeCallback('onFigureMove', {src: src, dst: dst});
+			this.executeCallback('onNotice', {message: 'You moved your <strong>'+figure.getType()+'</strong> from <strong>'+posIndex2String(src)+'</strong> to <strong>'+posIndex2String(dst)+'</strong>.'});
 			if (this.playerIsInCheck(this.getEnemyColor(), this.field)) code += '+';
 			this.sendMove(code);
 			this.historyAppend(code);
@@ -366,50 +424,9 @@ var KingFigure = Class.create(PeerChessFigure, {
 		$super(color, 'king');
 	},
 
-	executeMove: function($super, src, dst, field) {
-		if (this.isValidCastlingMove(src, dst, field)) {
-			if (dst.posX == 2) { // O-O-O
-				$super(src, dst, field); // move king
-				$super({posX: 0, posY: src.posY}, {posX: 3, posY: src.posY}, field); // move rook
-				return 'O-O-O';
-			}
-			else { // O-O
-				$super(src, dst, field); // move king
-				$super({posX: 7, posY: src.posY}, {posX: 5, posY: src.posY}, field); // move rook
-				return 'O-O';
-			}
-		}
-		else {
-			return $super(src, dst, field);
-		}
-	},
-
-	isValidCastlingMove: function(src, dst, field) {
-		var row = (this.color == 'white'? 0:7);
-		if (src.posY == dst.posY && src.posY == row
-			&& src.posX == 4
-			&& dst.posX == 6
-			&& field[5][row] == undefined
-			&& field[6][row] == undefined
-			&& field[7][row] instanceof RookFigure
-			&& field[7][row].getColor() == this.color
-		) return true;
-		if (src.posY == dst.posY && src.posY == row
-			&& src.posX == 4
-			&& dst.posX == 2
-			&& field[3][row] == undefined
-			&& field[2][row] == undefined
-			&& field[1][row] == undefined
-			&& field[0][row] instanceof RookFigure
-			&& field[0][row].getColor() == this.color
-		) return true;
-		return false;
-	},
-
 	validateMove: function(src, dst, field) {
 		// default move
 		if (Math.abs(src.posX-dst.posX) <= 1 && Math.abs(src.posY-dst.posY) <= 1) return true;
-		if (this.isValidCastlingMove(src, dst, field)) return true;
 		return false;
 	}
 });
