@@ -25,6 +25,5 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## chess figure images ##
 
-The chess figures (file figures/beholder.png) are taken from
-http://sf.net/projects/webchess/, licensed with GPLv3:
-  <http://www.gnu.org/licenses/>
+The chess figures (file figures/beholder.png) are taken from http://www.beholder.co.uk/
+License information: http://creativecommons.org/licenses/by-sa/3.0/

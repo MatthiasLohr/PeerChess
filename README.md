@@ -16,5 +16,3 @@ Please read ```LICENSE.md```.
 * Matthias Lohr (Code)
 * Andreas Litt (Code)
 * Lukas Barz (Images)
-
-The figure graphics are taken from http://sf.net/projects/webchess/.
