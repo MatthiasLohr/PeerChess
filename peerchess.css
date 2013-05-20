@@ -27,8 +27,7 @@ body {
 }
 
 #game #fields .figure.selected {
-	/* background-color: yellow; */
-    background-color: rgba(0, 184, 255, 0.3);
+	background-color: yellow;
 }
 
 #game .figure[data-color='white'][data-type='king'] {

@@ -6,3 +6,7 @@
 #gameboard {
 	background-image: url('soraphis-board.svg');
 }
+
+#game #fields .figure.selected {
+	background-color: rgba(0, 184, 255, 0.3);
+}
