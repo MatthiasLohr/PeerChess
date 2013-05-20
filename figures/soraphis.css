@@ -1,0 +1,8 @@
+
+#game .figure {
+	background-image: url('soraphis.svg');
+}
+
+#gameboard {
+	background-image: url('soraphis-board.svg');
+}

@@ -1,4 +1,8 @@
 
 #game .figure {
-	background-image: url('beholder.svg');
+	background-image: url('beholder.png');
+}
+
+#gameboard {
+	background-image: url('beholder-board.png');
 }
