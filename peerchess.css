@@ -1,4 +1,3 @@
-
 html, body, td {
 	font-family: Arial, sans-serif;
 	color: #333;
@@ -28,7 +27,8 @@ body {
 }
 
 #game #fields .figure.selected {
-	background-color: yellow;
+	/* background-color: yellow; */
+    background-color: rgba(0, 184, 255, 0.3);
 }
 
 #game .figure[data-color='white'][data-type='king'] {
@@ -141,7 +141,9 @@ body {
 }
 
 #gameboard {
-	background-image: url('board.png');
+	width: 400px;
+	height: 400px;
+	background-image: url('board.svg');
 	background-size: 100% 100%;
 }
 
