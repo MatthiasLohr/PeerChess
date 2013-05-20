@@ -61,7 +61,7 @@ var PeerChessGame = Class.create({
 
 	connectToPeer: function(peerId) {
 		if (this.gameStatus !== GAME_STATUS_INITIALIZED) return false;
-		var connection = this.peer.connect(peerId);
+		var connection = this.peer.connect(peerId, {reliable: true});
 		var that = this;
 		connection.on('open', function() {
 			if (that.gameStatus == GAME_STATUS_INITIALIZED) {
